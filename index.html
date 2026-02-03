@@ -103,4 +103,95 @@
       for (const e of entries) {
         const li = document.createElement("li");
         const left = document.createElement("div");
-        left.innerHTML = `<div>${escapeHtml(e.name)}</div><small>${new Date(e.joined_at).toLo_
+        left.innerHTML = `<div>${escapeHtml(e.name)}</div><small>${new Date(e.joined_at).toLocaleString()}</small>`;
+        const right = document.createElement("div");
+
+        const t = tokens[e.id];
+        if (t?.delete_token) {
+          const b = document.createElement("button");
+          b.textContent = "Borrarme";
+          b.onclick = async () => {
+            try {
+              await rpc("leave_commander", { p_entry_id: e.id, p_delete_token: t.delete_token });
+              // limpiamos token local
+              const tok = loadTokens();
+              delete tok[e.id];
+              saveTokens(tok);
+              msg("Borrado.");
+              await refresh();
+            } catch (err) {
+              msg(err.message, true);
+            }
+          };
+          right.appendChild(b);
+        } else {
+          right.innerHTML = `<span class="pill">Sin control</span>`;
+        }
+
+        li.appendChild(left);
+        li.appendChild(right);
+        listEl.appendChild(li);
+      }
+    }
+
+    function renderLog(logs) {
+      el("logList").innerHTML = "";
+      for (const c of logs) {
+        const li = document.createElement("li");
+        const when = new Date(c.ts).toLocaleString();
+        const detail = c.details ? JSON.stringify(c.details) : "";
+        li.innerHTML = `<div>
+          <div><b>${escapeHtml(c.action)}</b> — ${escapeHtml(c.name || "")}</div>
+          <small>${when} ${escapeHtml(detail)}</small>
+        </div>`;
+        el("logList").appendChild(li);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    async function refresh() {
+      const state = await rpc("get_state");
+      el("datePill").textContent = `Sesión: ${state.session_date}`;
+      el("activeCount").textContent = state.active.length;
+      el("waitCount").textContent = state.waitlist.length;
+
+      const tokens = loadTokens();
+      renderList(el("activeList"), state.active, tokens);
+      renderList(el("waitList"), state.waitlist, tokens);
+      renderLog(state.changelog);
+    }
+
+    el("refreshBtn").onclick = async () => {
+      try { await refresh(); msg("Actualizado."); }
+      catch (err) { msg(err.message, true); }
+    };
+
+    el("joinBtn").onclick = async () => {
+      const name = el("name").value.trim();
+      if (!name) return msg("Escribe un nombre.", true);
+
+      try {
+        const r = await rpc("join_commander", { p_name: name });
+        const tokens = loadTokens();
+        tokens[r.entry_id] = { delete_token: r.delete_token, name: name, session_date: r.session_date };
+        saveTokens(tokens);
+
+        msg(`Apuntado como <b>${escapeHtml(name)}</b>. Estado: <b>${escapeHtml(r.status)}</b>.`);
+        el("name").value = "";
+        await refresh();
+      } catch (err) {
+        msg(err.message, true);
+      }
+    };
+
+    // Primera carga
+    try { await refresh(); }
+    catch (err) { msg(err.message, true); }
+  </script>
+</body>
+</html>
