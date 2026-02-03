@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Commander Miércoles</title>
+  <title>Commander Miercoles</title>
   <style>
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
     body { margin: 0; padding: 16px; background: #0b0c10; color: #eaeaea; }
@@ -29,11 +29,11 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Reserva Commander (Miércoles)</h1>
+      <h1>Reserva Commander</h1>
       <div class="row">
         <div>
           <div><span class="pill" id="datePill">Cargando…</span></div>
-          <small class="muted">Máximo 16 plazas. Si está lleno, entras en cola y subes automáticamente cuando haya hueco.</small>
+          <small class="muted">Maximo de 16 plazas. Si está lleno, entras en cola y subes automáticamente cuando haya hueco.</small>
         </div>
       </div>
     </div>
@@ -45,7 +45,7 @@
         <button id="joinBtn">Entrar</button>
         <button id="refreshBtn">Actualizar</button>
       </div>
-      <small class="muted">Tu “botón de borrarte” funciona desde este dispositivo (se guarda una clave local).</small>
+      <small class="muted">Tu “botón de borrarte” funciona desde este dispositivo</small>
       <div id="msg" style="margin-top:10px;"></div>
     </div>
 
@@ -70,13 +70,6 @@
   </div>
 
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-    // TODO: rellena esto
-    const SUPABASE_URL = "https://ytpheqrjnzolalamreew.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0cGhlcXJqbnpvbGFsYW1yZWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMjU3MjYsImV4cCI6MjA4NTcwMTcyNn0.u1QBrsAmdvpL0rpYBTu_vMmc02tn7dnusnXtbh6B-4k";
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const el = (id) => document.getElementById(id);
     const msg = (text, isErr=false) => {
@@ -92,12 +85,21 @@
     };
     const saveTokens = (obj) => localStorage.setItem(LS_KEY, JSON.stringify(obj));
 
-    async function rpc(name, params={}) {
-      const { data, error } = await supabase.rpc(name, params);
-      if (error) throw new Error(error.message);
-      return data;
+    const WORKER_URL = "https://odd-base-6565.elfantasmitokawaii.workers.dev";
+
+    async function api(path, method = "GET", body = null) {
+      const res = await fetch(WORKER_URL + path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : null
+      });
+    
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "API error");
+      return json.data;
     }
 
+    
     function renderList(listEl, entries, tokens) {
       listEl.innerHTML = "";
       for (const e of entries) {
@@ -112,7 +114,7 @@
           b.textContent = "Borrarme";
           b.onclick = async () => {
             try {
-              await rpc("leave_commander", { p_entry_id: e.id, p_delete_token: t.delete_token });
+              await api("/api/leave", "POST", { entry_id: e.id, delete_token: t.delete_token });
               // limpiamos token local
               const tok = loadTokens();
               delete tok[e.id];
@@ -155,7 +157,7 @@
     }
 
     async function refresh() {
-      const state = await rpc("get_state");
+      const state = await api("/api/state");
       const d = new Date(state.session_date + "T00:00:00");
       el("datePill").textContent = `Sesión: ${d.toLocaleDateString("es-ES", {
         day: "2-digit",
@@ -180,7 +182,7 @@
       if (!name) return msg("Escribe un nombre.", true);
 
       try {
-        const r = await rpc("join_commander", { p_name: name });
+        const r = await api("/api/join", "POST", { name });
         const tokens = loadTokens();
         tokens[r.entry_id] = { delete_token: r.delete_token, name: name, session_date: r.session_date };
         saveTokens(tokens);
@@ -199,4 +201,5 @@
   </script>
 </body>
 </html>
+
 
