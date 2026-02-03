@@ -3,37 +3,554 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Commander Miercoles</title>
+  <title>Commander Miércoles</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
-    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    body { margin: 0; padding: 16px; background: #0b0c10; color: #eaeaea; }
-    .wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 12px; }
-    .card { background: #14161d; border: 1px solid #24283a; border-radius: 12px; padding: 14px; }
-    h1,h2 { margin: 0 0 10px; }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    input { flex: 1; min-width: 200px; padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2f45; background: #0f1118; color: #eaeaea; }
-    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2f45; background: #1b2140; color: #eaeaea; cursor: pointer; }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-    li { display: flex; justify-content: space-between; gap: 8px; padding: 10px; border-radius: 10px; border: 1px solid #24283a; background: #0f1118; }
-    small { color: #a8b0c3; }
-    .pill { padding: 2px 8px; border: 1px solid #2a2f45; border-radius: 999px; font-size: 12px; color: #cbd3ee; }
-    .danger { background: #3b1520; border-color: #5a2234; }
-    .muted { color: #a8b0c3; }
-    .grid2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 860px) { .grid2 { grid-template-columns: 1fr 1fr; } }
-    .log { max-height: 320px; overflow: auto; }
-    a { color: inherit; }
+    :root{
+      --fontHead: "Cinzel", ui-serif, Georgia, serif;
+      --fontBody: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+      /* Defaults (se sobreescriben por tema) */
+      --bgA: #07080c;
+      --bgB: #0b0c10;
+      --cardA: rgba(14,16,24,.78);
+      --cardB: rgba(10,12,18,.65);
+      --line: rgba(230,230,255,.14);
+      --line2: rgba(230,230,255,.22);
+      --text: #eaeaea;
+      --muted: rgba(234,234,234,.72);
+
+      --accent: #7aa9ff;
+      --accent2:#d9c27a;
+
+      --dangerBg: rgba(74,18,32,.85);
+      --dangerLine: rgba(172,58,88,.55);
+
+      --shadow: 0 18px 45px rgba(0,0,0,.45);
+      --radius: 18px;
+
+      color-scheme: dark;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: var(--fontBody);
+      color: var(--text);
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 700px at 15% -10%, rgba(122,169,255,.18), transparent 60%),
+        radial-gradient(900px 520px at 90% 12%, rgba(217,194,122,.14), transparent 55%),
+        linear-gradient(180deg, var(--bgA), var(--bgB) 60%, #05060a);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* “Textura” global (cambia por tema) */
+    body::before{
+      content:"";
+      position: fixed; inset: 0;
+      pointer-events:none;
+      opacity: .7;
+      background:
+        radial-gradient(900px 360px at 50% 10%, rgba(255,255,255,.06), transparent 60%),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0px, rgba(255,255,255,.018) 1px, transparent 1px, transparent 12px);
+      mix-blend-mode: screen;
+    }
+
+    /* “Vignette” */
+    body::after{
+      content:"";
+      position: fixed; inset: 0;
+      pointer-events:none;
+      background: radial-gradient(1200px 900px at 50% 30%, transparent 45%, rgba(0,0,0,.55));
+      opacity:.9;
+    }
+
+    /* ======= TOPBAR ======= */
+    .topbar{
+      position: sticky; top: 0; z-index: 10;
+      backdrop-filter: blur(12px);
+      background: rgba(8,10,16,.62);
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar .inner{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    .brand{
+      display:flex; align-items:center; gap: 12px;
+      text-decoration:none; color: var(--text);
+    }
+    .sigil{
+      width: 38px; height: 38px;
+      border-radius: 14px;
+      border: 1px solid var(--line2);
+      box-shadow: 0 0 0 1px rgba(0,0,0,.25) inset, 0 16px 35px rgba(0,0,0,.32);
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.25), transparent 55%),
+        linear-gradient(135deg, rgba(255,255,255,.10), rgba(0,0,0,.10));
+      position: relative;
+      overflow:hidden;
+    }
+    .sigil::after{
+      content:"";
+      position:absolute; inset:-40%;
+      background: conic-gradient(from 180deg, transparent, rgba(255,255,255,.18), transparent);
+      transform: rotate(18deg);
+      opacity:.6;
+    }
+    .brandTitle{
+      font-family: var(--fontHead);
+      letter-spacing: .6px;
+      font-weight: 800;
+      line-height: 1.05;
+    }
+    .brandSub{
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .rightTop{
+      display:flex; gap: 10px; align-items:center; flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill{
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 12px;
+      color: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.06);
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      white-space:nowrap;
+    }
+
+    /* ======= THEME SWITCHER ======= */
+    .manaBar{
+      display:flex; gap: 6px; align-items:center;
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+    }
+    .manaBtn{
+      width: 34px; height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      cursor: pointer;
+      position: relative;
+      transition: transform .06s ease, filter .2s ease, border-color .2s ease;
+      display:grid; place-items:center;
+      user-select:none;
+    }
+    .manaBtn:hover{ filter: brightness(1.06); border-color: rgba(255,255,255,.26); }
+    .manaBtn:active{ transform: translateY(1px); }
+    .manaBtn[aria-pressed="true"]{
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255,255,255,.10), 0 0 22px rgba(255,255,255,.10);
+      border-color: rgba(255,255,255,.35);
+    }
+    .pip{
+      width: 12px; height: 12px;
+      border-radius: 999px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.35) inset;
+    }
+    .pip.w{ background: #f3edcf; }
+    .pip.u{ background: #2f86ff; }
+    .pip.b{ background: #6b6f7a; }
+    .pip.r{ background: #ff4d42; }
+    .pip.g{ background: #35d27b; }
+
+    /* ======= LAYOUT ======= */
+    .wrap{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 18px 16px 46px;
+      display:grid;
+      gap: 14px;
+      position: relative;
+      z-index: 1; /* por encima de overlays */
+    }
+
+    .card{
+      background: linear-gradient(180deg, var(--cardA), var(--cardB));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow:hidden;
+    }
+
+    /* adorno de “runas” sutil (cambia con tema en variables) */
+    .card::before{
+      content:"";
+      position:absolute; inset: 0;
+      pointer-events:none;
+      opacity: .85;
+      background:
+        radial-gradient(700px 180px at 12% 0%, rgba(255,255,255,.06), transparent 55%),
+        radial-gradient(700px 180px at 88% 0%, rgba(255,255,255,.05), transparent 55%);
+      mix-blend-mode: screen;
+    }
+    .card > *{ position:relative; z-index:1; }
+
+    h1,h2{
+      margin: 0 0 10px;
+      font-family: var(--fontHead);
+      letter-spacing: .5px;
+    }
+
+    .row{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+    }
+
+    input{
+      flex: 1;
+      min-width: 220px;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      outline: none;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.25) inset;
+    }
+    input:focus{
+      border-color: rgba(255,255,255,.30);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.10);
+    }
+
+    button{
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line2);
+      background:
+        radial-gradient(220px 120px at 20% 20%, rgba(255,255,255,.09), transparent 55%),
+        linear-gradient(180deg, rgba(10,10,16,.40), rgba(0,0,0,.18));
+      color: var(--text);
+      cursor:pointer;
+      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+      transition: transform .06s ease, filter .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    button:hover{ filter: brightness(1.06); border-color: rgba(255,255,255,.30); }
+    button:active{ transform: translateY(1px); }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .btnPrimary{
+      border-color: rgba(255,255,255,.22);
+      background:
+        radial-gradient(260px 140px at 20% 20%, rgba(255,255,255,.12), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.28));
+      position:relative;
+    }
+    .btnPrimary::after{
+      content:"";
+      position:absolute; inset:-1px;
+      border-radius: inherit;
+      pointer-events:none;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+      opacity:.55;
+    }
+
+    ul{
+      list-style:none;
+      padding:0;
+      margin:0;
+      display:grid;
+      gap: 10px;
+    }
+    li{
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,.18);
+    }
+
+    small{ color: var(--muted); }
+    .muted{ color: var(--muted); }
+
+    .danger{
+      background: linear-gradient(180deg, var(--dangerBg), rgba(0,0,0,.25));
+      border-color: var(--dangerLine);
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    @media (min-width: 900px){
+      .grid2{ grid-template-columns: 1fr 1fr; }
+    }
+
+    .log{
+      max-height: 320px;
+      overflow:auto;
+      padding-right: 2px;
+    }
+    .log::-webkit-scrollbar{ width: 10px; }
+    .log::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      border: 2px solid rgba(0,0,0,.25);
+    }
+
+    footer{
+      margin-top: 26px;
+      padding: 18px 16px 26px;
+      border-top: 1px solid var(--line);
+      background: rgba(8,10,16,.40);
+      backdrop-filter: blur(10px);
+      position: relative;
+      z-index: 1;
+    }
+    footer .inner{
+      max-width: 1100px;
+      margin: 0 auto;
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .fineprint{ font-size: 12px; color: var(--muted); }
+
+    /* ======= THEMES (data-theme) =======
+       Cada tema cambia:
+       - fondos (bgA/bgB)
+       - acentos
+       - textura (body::before override)
+       - sensación de card/bordes
+    */
+
+    /* WHITE — orden, luz, “catedral/ley” */
+    [data-theme="w"]{
+      --bgA:#0b0b10;
+      --bgB:#12121a;
+      --line: rgba(243,237,207,.18);
+      --line2: rgba(243,237,207,.28);
+      --accent:#f3edcf;
+      --accent2:#d9c27a;
+      --cardA: rgba(20,20,26,.72);
+      --cardB: rgba(10,10,14,.62);
+      --muted: rgba(243,237,207,.68);
+    }
+    [data-theme="w"] body::before{
+      background:
+        radial-gradient(900px 360px at 50% 6%, rgba(243,237,207,.10), transparent 60%),
+        repeating-linear-gradient(0deg, rgba(243,237,207,.020) 0px, rgba(243,237,207,.020) 1px, transparent 1px, transparent 14px);
+      opacity:.8;
+      mix-blend-mode: screen;
+    }
+    [data-theme="w"] .sigil{
+      background:
+        radial-gradient(circle at 30% 30%, rgba(243,237,207,.35), transparent 58%),
+        linear-gradient(135deg, rgba(243,237,207,.12), rgba(0,0,0,.10));
+    }
+
+    /* BLUE — arcano, hexes, energía “aether” */
+    [data-theme="u"]{
+      --bgA:#060b14;
+      --bgB:#0b1020;
+      --line: rgba(122,169,255,.18);
+      --line2: rgba(122,169,255,.30);
+      --accent:#7aa9ff;
+      --accent2:#b8d1ff;
+      --cardA: rgba(10,16,30,.74);
+      --cardB: rgba(8,10,18,.62);
+      --muted: rgba(184,209,255,.68);
+    }
+    [data-theme="u"] body{
+      background:
+        radial-gradient(1200px 700px at 18% -10%, rgba(122,169,255,.26), transparent 62%),
+        radial-gradient(900px 520px at 90% 12%, rgba(90,130,255,.12), transparent 55%),
+        linear-gradient(180deg, var(--bgA), var(--bgB) 60%, #05060a);
+    }
+    [data-theme="u"] body::before{
+      background:
+        radial-gradient(800px 380px at 55% 10%, rgba(122,169,255,.12), transparent 60%),
+        repeating-linear-gradient(135deg, rgba(122,169,255,.018) 0px, rgba(122,169,255,.018) 1px, transparent 1px, transparent 12px);
+      opacity:.85;
+      mix-blend-mode: screen;
+    }
+
+    /* BLACK — decadencia, necro, humo */
+    [data-theme="b"]{
+      --bgA:#050507;
+      --bgB:#090a0d;
+      --line: rgba(200,200,210,.12);
+      --line2: rgba(200,200,210,.18);
+      --accent:#c7c7d6;
+      --accent2:#8b8b96;
+      --cardA: rgba(10,10,12,.78);
+      --cardB: rgba(6,6,8,.68);
+      --muted: rgba(200,200,210,.60);
+      --dangerBg: rgba(100,14,34,.85);
+      --dangerLine: rgba(200,60,95,.45);
+    }
+    [data-theme="b"] body{
+      background:
+        radial-gradient(1100px 650px at 20% -10%, rgba(255,255,255,.08), transparent 62%),
+        radial-gradient(900px 520px at 90% 12%, rgba(120,120,140,.06), transparent 55%),
+        linear-gradient(180deg, var(--bgA), var(--bgB) 60%, #020204);
+    }
+    [data-theme="b"] body::before{
+      background:
+        radial-gradient(900px 420px at 50% 12%, rgba(255,255,255,.06), transparent 62%),
+        radial-gradient(900px 500px at 30% 90%, rgba(180,70,110,.05), transparent 60%),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0px, rgba(255,255,255,.012) 1px, transparent 1px, transparent 16px);
+      opacity:.75;
+      mix-blend-mode: screen;
+    }
+
+    /* RED — caótico, chispas, “lava” */
+    [data-theme="r"]{
+      --bgA:#140607;
+      --bgB:#1a0708;
+      --line: rgba(255,110,92,.16);
+      --line2: rgba(255,110,92,.26);
+      --accent:#ff6e5c;
+      --accent2:#ffb24a;
+      --cardA: rgba(30,10,10,.74);
+      --cardB: rgba(14,8,8,.62);
+      --muted: rgba(255,180,150,.62);
+      --dangerBg: rgba(140,16,30,.85);
+      --dangerLine: rgba(255,110,92,.45);
+    }
+    [data-theme="r"] body{
+      background:
+        radial-gradient(1200px 650px at 20% -10%, rgba(255,110,92,.22), transparent 62%),
+        radial-gradient(900px 520px at 92% 10%, rgba(255,178,74,.14), transparent 55%),
+        radial-gradient(900px 520px at 40% 110%, rgba(255,60,60,.10), transparent 55%),
+        linear-gradient(180deg, var(--bgA), var(--bgB) 60%, #050204);
+    }
+    [data-theme="r"] body::before{
+      background:
+        radial-gradient(900px 420px at 55% 12%, rgba(255,110,92,.10), transparent 62%),
+        repeating-linear-gradient(20deg, rgba(255,178,74,.020) 0px, rgba(255,178,74,.020) 1px, transparent 1px, transparent 10px);
+      opacity:.85;
+      mix-blend-mode: screen;
+    }
+    /* “Chispas” extra en rojo */
+    [data-theme="r"] .card::after{
+      content:"";
+      position:absolute; inset:0;
+      pointer-events:none;
+      opacity:.35;
+      background:
+        radial-gradient(6px 6px at 12% 20%, rgba(255,178,74,.7), transparent 60%),
+        radial-gradient(5px 5px at 42% 30%, rgba(255,110,92,.6), transparent 60%),
+        radial-gradient(4px 4px at 72% 22%, rgba(255,178,74,.55), transparent 60%),
+        radial-gradient(5px 5px at 88% 40%, rgba(255,110,92,.55), transparent 60%),
+        radial-gradient(4px 4px at 30% 75%, rgba(255,178,74,.45), transparent 60%),
+        radial-gradient(4px 4px at 62% 82%, rgba(255,110,92,.45), transparent 60%);
+      mix-blend-mode: screen;
+    }
+    [data-theme="r"] .card > *{ position:relative; z-index:1; }
+
+    /* GREEN — naturaleza, musgo, hojas */
+    [data-theme="g"]{
+      --bgA:#06120a;
+      --bgB:#07160c;
+      --line: rgba(120,255,180,.14);
+      --line2: rgba(120,255,180,.22);
+      --accent:#35d27b;
+      --accent2:#b7ffcf;
+      --cardA: rgba(10,24,14,.72);
+      --cardB: rgba(8,14,10,.62);
+      --muted: rgba(190,255,220,.62);
+    }
+    [data-theme="g"] body{
+      background:
+        radial-gradient(1200px 650px at 20% -10%, rgba(53,210,123,.18), transparent 62%),
+        radial-gradient(900px 520px at 92% 10%, rgba(183,255,207,.10), transparent 55%),
+        radial-gradient(900px 520px at 40% 110%, rgba(53,210,123,.08), transparent 55%),
+        linear-gradient(180deg, var(--bgA), var(--bgB) 60%, #020604);
+    }
+    [data-theme="g"] body::before{
+      background:
+        radial-gradient(900px 420px at 50% 12%, rgba(183,255,207,.10), transparent 62%),
+        radial-gradient(700px 420px at 15% 60%, rgba(53,210,123,.08), transparent 60%),
+        repeating-linear-gradient(135deg, rgba(183,255,207,.014) 0px, rgba(183,255,207,.014) 1px, transparent 1px, transparent 14px);
+      opacity:.85;
+      mix-blend-mode: screen;
+    }
+    /* “Hojas” abstractas */
+    [data-theme="g"] .card::after{
+      content:"";
+      position:absolute; inset:-20%;
+      pointer-events:none;
+      opacity:.18;
+      background:
+        radial-gradient(260px 160px at 20% 30%, rgba(53,210,123,.9), transparent 60%),
+        radial-gradient(240px 140px at 70% 20%, rgba(183,255,207,.75), transparent 60%),
+        radial-gradient(280px 180px at 65% 85%, rgba(53,210,123,.7), transparent 60%);
+      filter: blur(18px);
+      transform: rotate(-8deg);
+      mix-blend-mode: screen;
+    }
+    [data-theme="g"] .card > *{ position:relative; z-index:1; }
+
+    /* Detalle: links */
+    a{ color: inherit; }
   </style>
 </head>
-<body>
+
+<body data-theme="u">
+  <div class="topbar">
+    <div class="inner">
+      <a class="brand" href="#">
+        <span class="sigil" aria-hidden="true"></span>
+        <div>
+          <div class="brandTitle">Reserva Commander</div>
+          <div class="brandSub">Elige un color • cambia el plano</div>
+        </div>
+      </a>
+
+      <div class="rightTop">
+        <div class="manaBar" role="group" aria-label="Seleccionar tema de color">
+          <button class="manaBtn" id="themeW" aria-pressed="false" title="Blanco" data-theme-pick="w"><span class="pip w"></span></button>
+          <button class="manaBtn" id="themeU" aria-pressed="true"  title="Azul"   data-theme-pick="u"><span class="pip u"></span></button>
+          <button class="manaBtn" id="themeB" aria-pressed="false" title="Negro"  data-theme-pick="b"><span class="pip b"></span></button>
+          <button class="manaBtn" id="themeR" aria-pressed="false" title="Rojo"   data-theme-pick="r"><span class="pip r"></span></button>
+          <button class="manaBtn" id="themeG" aria-pressed="false" title="Verde"  data-theme-pick="g"><span class="pip g"></span></button>
+        </div>
+
+        <span class="pill" id="datePill">Cargando…</span>
+      </div>
+    </div>
+  </div>
+
   <div class="wrap">
     <div class="card">
-      <h1>Reserva Commander</h1>
+      <h1>Commander Miércoles</h1>
       <div class="row">
         <div>
-          <div><span class="pill" id="datePill">Cargando…</span></div>
-          <small class="muted">Maximo de 16 plazas. Si está lleno, entras en cola y subes automáticamente cuando haya hueco.</small>
+          <small class="muted">Máximo de 16 plazas. Si está lleno, entras en cola y subes automáticamente cuando haya hueco.</small>
         </div>
       </div>
     </div>
@@ -42,7 +559,7 @@
       <h2>Apuntarse</h2>
       <div class="row">
         <input id="name" placeholder="Tu nombre (único)" maxlength="32" />
-        <button id="joinBtn">Entrar</button>
+        <button id="joinBtn" class="btnPrimary">Entrar</button>
         <button id="refreshBtn">Actualizar</button>
       </div>
       <small class="muted">Tu “botón de borrarte” funciona desde este dispositivo</small>
@@ -69,9 +586,16 @@
     </div>
   </div>
 
-  <script type="module">
+  <footer>
+    <div class="inner">
+      <div class="fineprint">Consejo: el tema se guarda en este dispositivo.</div>
+      <div class="pill">W • U • B • R • G</div>
+    </div>
+  </footer>
 
+  <script type="module">
     const el = (id) => document.getElementById(id);
+
     const msg = (text, isErr=false) => {
       el("msg").innerHTML = `<div class="card ${isErr ? "danger" : ""}" style="margin-top:10px;">
         ${text}
@@ -93,13 +617,18 @@
         headers: body ? { "Content-Type": "application/json" } : {},
         body: body ? JSON.stringify(body) : null
       });
-    
+
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || "API error");
       return json.data;
     }
 
-    
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
     function renderList(listEl, entries, tokens) {
       listEl.innerHTML = "";
       for (const e of entries) {
@@ -115,7 +644,6 @@
           b.onclick = async () => {
             try {
               await api("/api/leave", "POST", { entry_id: e.id, delete_token: t.delete_token });
-              // limpiamos token local
               const tok = loadTokens();
               delete tok[e.id];
               saveTokens(tok);
@@ -150,31 +678,24 @@
       }
     }
 
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, (m) => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[m]));
-    }
-
     async function refresh() {
       const state = await api("/api/state");
-    
+
       const d = new Date(state.session_date + "T00:00:00");
       el("datePill").textContent = `Sesión: ${d.toLocaleDateString("es-ES", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric"
       })}`;
-    
+
       el("activeCount").textContent = state.active.length;
       el("waitCount").textContent = state.waitlist.length;
-    
+
       const tokens = loadTokens();
       renderList(el("activeList"), state.active, tokens);
       renderList(el("waitList"), state.waitlist, tokens);
       renderLog(state.changelog);
     }
-
 
     el("refreshBtn").onclick = async () => {
       try { await refresh(); msg("Actualizado."); }
@@ -199,18 +720,39 @@
       }
     };
 
+    /* ======= Theme picker (W/U/B/R/G) ======= */
+    const THEME_KEY = "commander_theme_v1";
+
+    function setTheme(t){
+      document.body.setAttribute("data-theme", t);
+
+      // aria-pressed en botones
+      document.querySelectorAll("[data-theme-pick]").forEach(btn => {
+        btn.setAttribute("aria-pressed", btn.getAttribute("data-theme-pick") === t ? "true" : "false");
+      });
+
+      try { localStorage.setItem(THEME_KEY, t); } catch {}
+    }
+
+    // click handlers
+    document.querySelectorAll("[data-theme-pick]").forEach(btn => {
+      btn.addEventListener("click", () => setTheme(btn.getAttribute("data-theme-pick")));
+    });
+
+    // tema inicial (guardado o azul)
+    const savedTheme = (() => {
+      try { return localStorage.getItem(THEME_KEY) || "u"; } catch { return "u"; }
+    })();
+    setTheme(savedTheme);
+
     // Primera carga
     try { await refresh(); }
     catch (err) { msg(err.message, true); }
-    
+
     // Auto-refresh cada 5s
     setInterval(() => {
       refresh().catch(() => {});
     }, 5000);
-
   </script>
 </body>
 </html>
-
-
-
