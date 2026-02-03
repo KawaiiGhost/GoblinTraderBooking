@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Commander Miércoles</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    body { margin: 0; padding: 16px; background: #0b0c10; color: #eaeaea; }
+    .wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 12px; }
+    .card { background: #14161d; border: 1px solid #24283a; border-radius: 12px; padding: 14px; }
+    h1,h2 { margin: 0 0 10px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    input { flex: 1; min-width: 200px; padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2f45; background: #0f1118; color: #eaeaea; }
+    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2f45; background: #1b2140; color: #eaeaea; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+    li { display: flex; justify-content: space-between; gap: 8px; padding: 10px; border-radius: 10px; border: 1px solid #24283a; background: #0f1118; }
+    small { color: #a8b0c3; }
+    .pill { padding: 2px 8px; border: 1px solid #2a2f45; border-radius: 999px; font-size: 12px; color: #cbd3ee; }
+    .danger { background: #3b1520; border-color: #5a2234; }
+    .muted { color: #a8b0c3; }
+    .grid2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 860px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+    .log { max-height: 320px; overflow: auto; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Reserva Commander (Miércoles)</h1>
+      <div class="row">
+        <div>
+          <div><span class="pill" id="datePill">Cargando…</span></div>
+          <small class="muted">Máximo 16 plazas. Si está lleno, entras en cola y subes automáticamente cuando haya hueco.</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Apuntarse</h2>
+      <div class="row">
+        <input id="name" placeholder="Tu nombre (único)" maxlength="32" />
+        <button id="joinBtn">Entrar</button>
+        <button id="refreshBtn">Actualizar</button>
+      </div>
+      <small class="muted">Tu “botón de borrarte” funciona desde este dispositivo (se guarda una clave local).</small>
+      <div id="msg" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Plazas (<span id="activeCount">0</span>/16)</h2>
+        <ul id="activeList"></ul>
+      </div>
+
+      <div class="card">
+        <h2>Waitlist (<span id="waitCount">0</span>)</h2>
+        <ul id="waitList"></ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Changelog</h2>
+      <div class="log">
+        <ul id="logList"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    // TODO: rellena esto
+    const SUPABASE_URL = "https://ytpheqrjnzolalamreew.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0cGhlcXJqbnpvbGFsYW1yZWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMjU3MjYsImV4cCI6MjA4NTcwMTcyNn0.u1QBrsAmdvpL0rpYBTu_vMmc02tn7dnusnXtbh6B-4k";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const el = (id) => document.getElementById(id);
+    const msg = (text, isErr=false) => {
+      el("msg").innerHTML = `<div class="card ${isErr ? "danger" : ""}" style="margin-top:10px;">
+        ${text}
+      </div>`;
+    };
+
+    const LS_KEY = "commander_tokens_v1";
+    const loadTokens = () => {
+      try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }
+      catch { return {}; }
+    };
+    const saveTokens = (obj) => localStorage.setItem(LS_KEY, JSON.stringify(obj));
+
+    async function rpc(name, params={}) {
+      const { data, error } = await supabase.rpc(name, params);
+      if (error) throw new Error(error.message);
+      return data;
+    }
+
+    function renderList(listEl, entries, tokens) {
+      listEl.innerHTML = "";
+      for (const e of entries) {
+        const li = document.createElement("li");
+        const left = document.createElement("div");
+        left.innerHTML = `<div>${escapeHtml(e.name)}</div><small>${new Date(e.joined_at).toLo_
