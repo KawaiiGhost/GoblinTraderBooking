@@ -684,56 +684,60 @@
     }
 
     async function refresh() {
-  const state = await api("/api/state");
+  let refreshing = false;
 
-  // Botón según ventana
-  el("joinBtn").disabled = !state.is_open;
+async function refresh() {
+  if (refreshing) return;
+  refreshing = true;
 
-  // Mensaje de reservas cerradas / limpiar si abierto
-  if (state.is_open) {
-    el("msg").innerHTML = "";
-  } else {
-    const opens = new Date(state.opens_at);
-    const fecha = opens
-      .toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      })
-      .replace(",", "");
+  try {
+    const state = await api("/api/state");
 
-    msg(`Las reservas abren a las <b>7:00</b> el <b>${fecha}</b>`, true);
+    // Botón según ventana
+    el("joinBtn").disabled = !state.is_open;
+
+    // Mensaje de reservas cerradas / limpiar si abierto
+    if (state.is_open) {
+      el("msg").innerHTML = "";
+    } else {
+      const opens = new Date(state.opens_at);
+      const fecha = opens
+        .toLocaleDateString("es-ES", {
+          weekday: "long",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric"
+        })
+        .replace(",", "");
+
+      msg(`Las reservas abren a las <b>7:00</b> el <b>${fecha}</b>`, true);
+    }
+
+    // Sesión (fecha)
+    const d = new Date(state.session_date + "T00:00:00");
+    el("datePill").textContent = `Sesión: ${d.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    })}`;
+
+    // Contadores
+    el("activeCount").textContent = state.active.length;
+    el("waitCount").textContent = state.waitlist.length;
+
+    // Render
+    const tokens = loadTokens();
+    renderList(el("activeList"), state.active, tokens);
+    renderList(el("waitList"), state.waitlist, tokens);
+    renderLog(state.changelog);
+  } catch (err) {
+    msg(err.message || "Error al cargar estado", true);
+    throw err;
+  } finally {
+    refreshing = false;
   }
-
-  // Sesión (fecha)
-  const d = new Date(state.session_date + "T00:00:00");
-  el("datePill").textContent = `Sesión: ${d.toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  })}`;
-
-  // Contadores
-  el("activeCount").textContent = state.active.length;
-  el("waitCount").textContent = state.waitlist.length;
-
-  // Render
-  const tokens = loadTokens();
-  renderList(el("activeList"), state.active, tokens);
-  renderList(el("waitList"), state.waitlist, tokens);
-  renderLog(state.changelog);
 }
 
-
-  el("activeCount").textContent = state.active.length;
-  el("waitCount").textContent = state.waitlist.length;
-
-  const tokens = loadTokens();
-  renderList(el("activeList"), state.active, tokens);
-  renderList(el("waitList"), state.waitlist, tokens);
-  renderLog(state.changelog);
-}
 
     el("refreshBtn").onclick = async () => {
       try { await refresh(); msg("Actualizado."); }
@@ -794,6 +798,7 @@
   </script>
 </body>
 </html>
+
 
 
 
