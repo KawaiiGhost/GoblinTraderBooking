@@ -683,8 +683,7 @@
       }
     }
 
-    async function refresh() {
-  let refreshing = false;
+    let refreshing = false;
 
 async function refresh() {
   if (refreshing) return;
@@ -737,6 +736,7 @@ async function refresh() {
     refreshing = false;
   }
 }
+
 
 
     el("refreshBtn").onclick = async () => {
@@ -798,6 +798,7 @@ async function refresh() {
   </script>
 </body>
 </html>
+
 
 
 
