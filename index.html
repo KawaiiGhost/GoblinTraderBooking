@@ -688,17 +688,23 @@
 
   // UI: habilitar/deshabilitar reservas según ventana
   el("joinBtn").disabled = !state.is_open;
-  if (!state.is_open) {
-    const opens = new Date(state.opens_at);
-    msg(`Reservas cerradas. Abren el <b>${opens.toLocaleString("es-ES")}</b>.`, true);
-  }
 
-  const d = new Date(state.session_date + "T00:00:00");
-  el("datePill").textContent = `Sesión: ${d.toLocaleDateString("es-ES", {
+if (!state.is_open) {
+  const opens = new Date(state.opens_at);
+
+  const fecha = opens.toLocaleDateString("es-ES", {
+    weekday: "long",
     day: "2-digit",
     month: "2-digit",
     year: "numeric"
-  })}`;
+  });
+
+  msg(
+    `Las reservas abren a las <b>7:00</b> el <b>${fecha}</b>`,
+    true
+  );
+}
+
 
   el("activeCount").textContent = state.active.length;
   el("waitCount").textContent = state.waitlist.length;
@@ -768,6 +774,7 @@
   </script>
 </body>
 </html>
+
 
 
 
