@@ -684,23 +684,30 @@
     }
 
     async function refresh() {
-      const state = await api("/api/state");
+  const state = await api("/api/state");
 
-      const d = new Date(state.session_date + "T00:00:00");
-      el("datePill").textContent = `Sesión: ${d.toLocaleDateString("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      })}`;
+  // UI: habilitar/deshabilitar reservas según ventana
+  el("joinBtn").disabled = !state.is_open;
+  if (!state.is_open) {
+    const opens = new Date(state.opens_at);
+    msg(`Reservas cerradas. Abren el <b>${opens.toLocaleString("es-ES")}</b>.`, true);
+  }
 
-      el("activeCount").textContent = state.active.length;
-      el("waitCount").textContent = state.waitlist.length;
+  const d = new Date(state.session_date + "T00:00:00");
+  el("datePill").textContent = `Sesión: ${d.toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  })}`;
 
-      const tokens = loadTokens();
-      renderList(el("activeList"), state.active, tokens);
-      renderList(el("waitList"), state.waitlist, tokens);
-      renderLog(state.changelog);
-    }
+  el("activeCount").textContent = state.active.length;
+  el("waitCount").textContent = state.waitlist.length;
+
+  const tokens = loadTokens();
+  renderList(el("activeList"), state.active, tokens);
+  renderList(el("waitList"), state.waitlist, tokens);
+  renderLog(state.changelog);
+}
 
     el("refreshBtn").onclick = async () => {
       try { await refresh(); msg("Actualizado."); }
@@ -761,6 +768,7 @@
   </script>
 </body>
 </html>
+
 
 
 
