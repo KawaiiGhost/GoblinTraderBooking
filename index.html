@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="es">
-  
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -9,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Chart.js (necesario para el gráfico) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
     :root{
@@ -279,6 +281,10 @@
       opacity:.55;
     }
 
+    select{
+      font: inherit;
+    }
+
     ul{
       list-style:none;
       padding:0;
@@ -345,13 +351,7 @@
     }
     .fineprint{ font-size: 12px; color: var(--muted); }
 
-    /* ======= THEMES (data-theme) =======
-       Cada tema cambia:
-       - fondos (bgA/bgB)
-       - acentos
-       - textura (body::before override)
-       - sensación de card/bordes
-    */
+    /* ======= THEMES (data-theme) ======= */
 
     /* WHITE — orden, luz, “catedral/ley” */
     [data-theme="w"]{
@@ -461,7 +461,6 @@
       opacity:.85;
       mix-blend-mode: screen;
     }
-    /* “Chispas” extra en rojo */
     [data-theme="r"] .card::after{
       content:"";
       position:absolute; inset:0;
@@ -505,7 +504,6 @@
       opacity:.85;
       mix-blend-mode: screen;
     }
-    /* “Hojas” abstractas */
     [data-theme="g"] .card::after{
       content:"";
       position:absolute; inset:-20%;
@@ -521,7 +519,6 @@
     }
     [data-theme="g"] .card > *{ position:relative; z-index:1; }
 
-    /* Detalle: links */
     a{ color: inherit; }
   </style>
 </head>
@@ -572,39 +569,40 @@
       <div id="msg" style="margin-top:10px;"></div>
     </div>
 
+    <!-- Bloque: histórico + gráfico -->
     <div class="grid2">
-  <div class="card">
-    <h2>Histórico</h2>
-    <div class="row">
-      <select id="sessionSelect"
-        style="flex:1; min-width:220px; padding:12px; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,.22); color:var(--text);">
-        <option value="">Cargando…</option>
-      </select>
-      <button id="viewSessionBtn">Ver</button>
-      <button id="backToCurrentBtn">Volver a actual</button>
-    </div>
-    <small class="muted">En histórico no se puede “Entrar”; solo consultar listas.</small>
-  </div>
+      <div class="card">
+        <h2>Histórico</h2>
+        <div class="row">
+          <select id="sessionSelect"
+            style="flex:1; min-width:220px; padding:12px; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,.22); color:var(--text);">
+            <option value="">Cargando…</option>
+          </select>
+          <button id="viewSessionBtn">Ver</button>
+          <button id="backToCurrentBtn">Volver a actual</button>
+        </div>
+        <small class="muted">En histórico no se puede “Entrar”; solo consultar listas.</small>
+      </div>
 
-  <div class="card">
-    <h2>Reservas por miércoles</h2>
-    <div class="row">
-      <select id="statsWeeks"
-        style="padding:12px; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,.22); color:var(--text);">
-        <option value="8">8 semanas</option>
-        <option value="12">12 semanas</option>
-        <option value="26" selected>26 semanas</option>
-        <option value="52">52 semanas</option>
-      </select>
-      <button id="reloadStatsBtn">Actualizar gráfico</button>
+      <div class="card">
+        <h2>Reservas por miércoles</h2>
+        <div class="row">
+          <select id="statsWeeks"
+            style="padding:12px; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,.22); color:var(--text);">
+            <option value="8">8 semanas</option>
+            <option value="12">12 semanas</option>
+            <option value="26" selected>26 semanas</option>
+            <option value="52">52 semanas</option>
+          </select>
+          <button id="reloadStatsBtn">Actualizar gráfico</button>
+        </div>
+        <div style="margin-top:12px; height:260px;">
+          <canvas id="statsChart"></canvas>
+        </div>
+        <small class="muted">Líneas: active, waitlist y total.</small>
+      </div>
     </div>
-    <div style="margin-top:12px; height:260px;">
-      <canvas id="statsChart"></canvas>
-    </div>
-    <small class="muted">Líneas: active, waitlist y total.</small>
-  </div>
-</div>
-    
+
     <div class="grid2">
       <div class="card">
         <h2>Plazas (<span id="activeCount">0</span>/16)</h2>
@@ -632,298 +630,290 @@
     </div>
   </footer>
 
- <script type="module">
-  const el = (id) => document.getElementById(id);
+  <script type="module">
+    const el = (id) => document.getElementById(id);
 
-  const msg = (text, isErr=false) => {
-    el("msg").innerHTML = `<div class="card ${isErr ? "danger" : ""}" style="margin-top:10px;">
-      ${text}
-    </div>`;
-  };
-
-  const LS_KEY = "commander_tokens_v1";
-  const loadTokens = () => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }
-    catch { return {}; }
-  };
-  const saveTokens = (obj) => localStorage.setItem(LS_KEY, JSON.stringify(obj));
-
-  const WORKER_URL = "https://odd-base-6565.elfantasmitokawaii.workers.dev";
-
-  async function api(path, method = "GET", body = null) {
-    const res = await fetch(WORKER_URL + path, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : {},
-      body: body ? JSON.stringify(body) : null
-    });
-
-    const json = await res.json().catch(() => null);
-    if (!json || !json.ok) throw new Error((json && json.error) ? json.error : "API error");
-    return json.data;
-  }
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (m) => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[m]));
-  }
-
-  function fmtDateES(yyyy_mm_dd) {
-    const d = new Date(yyyy_mm_dd + "T00:00:00");
-    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
-  }
-  function fmtDateLabelES(yyyy_mm_dd) {
-    const d = new Date(yyyy_mm_dd + "T00:00:00");
-    return d.toLocaleDateString("es-ES", {
-      weekday: "long", day: "2-digit", month: "2-digit", year: "numeric"
-    }).replace(",", "");
-  }
-
-  function renderList(listEl, entries, tokens) {
-    listEl.innerHTML = "";
-    for (const e of entries) {
-      const li = document.createElement("li");
-      const left = document.createElement("div");
-      left.innerHTML = `<div>${escapeHtml(e.name)}</div><small>${new Date(e.joined_at).toLocaleString()}</small>`;
-      const right = document.createElement("div");
-
-      const t = tokens[e.id];
-      if (t?.delete_token && !viewingDate) {
-        const b = document.createElement("button");
-        b.textContent = "Borrarme";
-        b.onclick = async () => {
-          try {
-            await api("/api/leave", "POST", { entry_id: e.id, delete_token: t.delete_token });
-            const tok = loadTokens();
-            delete tok[e.id];
-            saveTokens(tok);
-            msg("Borrado.");
-            await refresh();
-          } catch (err) {
-            msg(err.message, true);
-          }
-        };
-        right.appendChild(b);
-      } else {
-        right.innerHTML = `<span class="pill">${viewingDate ? "Histórico" : "Sin control"}</span>`;
-      }
-
-      li.appendChild(left);
-      li.appendChild(right);
-      listEl.appendChild(li);
-    }
-  }
-
-  function renderLog(logs) {
-    el("logList").innerHTML = "";
-    for (const c of logs) {
-      const li = document.createElement("li");
-      const when = new Date(c.ts).toLocaleString();
-      const detail = c.details ? JSON.stringify(c.details) : "";
-      li.innerHTML = `<div>
-        <div><b>${escapeHtml(c.action)}</b> — ${escapeHtml(c.name || "")}</div>
-        <small>${when} ${escapeHtml(detail)}</small>
+    const msg = (text, isErr=false) => {
+      el("msg").innerHTML = `<div class="card ${isErr ? "danger" : ""}" style="margin-top:10px;">
+        ${text}
       </div>`;
-      el("logList").appendChild(li);
+    };
+
+    const LS_KEY = "commander_tokens_v1";
+    const loadTokens = () => {
+      try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); }
+      catch { return {}; }
+    };
+    const saveTokens = (obj) => localStorage.setItem(LS_KEY, JSON.stringify(obj));
+
+    const WORKER_URL = "https://odd-base-6565.elfantasmitokawaii.workers.dev";
+
+    async function api(path, method = "GET", body = null) {
+      const res = await fetch(WORKER_URL + path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : null
+      });
+
+      const json = await res.json().catch(() => null);
+      if (!json || !json.ok) throw new Error((json && json.error) ? json.error : "API error");
+      return json.data;
     }
-  }
 
-  // ======= Histórico / gráfico =======
-  async function getSessions(weeks = 52) {
-    return await api(`/api/sessions?weeks=${weeks}`, "GET");
-  }
-  async function getStateFor(dateStr) {
-    return await api(`/api/state?date=${encodeURIComponent(dateStr)}`, "GET");
-  }
-  async function getStats(weeks = 26) {
-    return await api(`/api/stats?weeks=${weeks}`, "GET");
-  }
-
-  async function initSessionPicker() {
-    const sel = el("sessionSelect");
-    if (!sel) return;
-    sel.innerHTML = `<option value="">Cargando…</option>`;
-    try {
-      const dates = await getSessions(52);
-      sel.innerHTML = dates.map(d => `<option value="${d}">${fmtDateLabelES(d)}</option>`).join("");
-    } catch (e) {
-      sel.innerHTML = `<option value="">Error</option>`;
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
     }
-  }
 
-  let chart = null;
-  async function loadAndRenderChart() {
-    if (!el("statsChart")) return;
-    const weeks = Number(el("statsWeeks")?.value || "26");
-    const series = await getStats(weeks);
+    function fmtDateES(yyyy_mm_dd) {
+      const d = new Date(yyyy_mm_dd + "T00:00:00");
+      return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+    }
+    function fmtDateLabelES(yyyy_mm_dd) {
+      const d = new Date(yyyy_mm_dd + "T00:00:00");
+      return d.toLocaleDateString("es-ES", {
+        weekday: "long", day: "2-digit", month: "2-digit", year: "numeric"
+      }).replace(",", "");
+    }
 
-    const labels = series.map(r => fmtDateES(r.session_date));
-    const active = series.map(r => r.active ?? 0);
-    const wait = series.map(r => r.waitlist ?? 0);
-    const total = series.map(r => r.total ?? ((r.active ?? 0) + (r.waitlist ?? 0)));
+    function renderList(listEl, entries, tokens) {
+      listEl.innerHTML = "";
+      for (const e of entries) {
+        const li = document.createElement("li");
+        const left = document.createElement("div");
+        left.innerHTML = `<div>${escapeHtml(e.name)}</div><small>${new Date(e.joined_at).toLocaleString()}</small>`;
+        const right = document.createElement("div");
 
-    const ctx = el("statsChart").getContext("2d");
-    if (chart) chart.destroy();
-
-    chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels,
-        datasets: [
-          { label: "Active", data: active, tension: 0.25 },
-          { label: "Waitlist", data: wait, tension: 0.25 },
-          { label: "Total", data: total, tension: 0.25 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: "index", intersect: false },
-        plugins: { legend: { labels: { color: "#eaeaea" } } },
-        scales: {
-          x: { ticks: { color: "#cfcfcf" }, grid: { color: "rgba(255,255,255,.06)" } },
-          y: { ticks: { color: "#cfcfcf" }, grid: { color: "rgba(255,255,255,.06)" }, beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  // ======= refresh con “modo histórico” =======
-  let viewingDate = null;  // null = actual
-  let refreshing = false;
-
-  async function refresh(dateStr = null) {
-    if (refreshing) return;
-    refreshing = true;
-
-    try {
-      const state = dateStr ? await getStateFor(dateStr) : await api("/api/state", "GET");
-      viewingDate = dateStr ? state.session_date : null;
-
-      // Join sólo en modo actual y abierto
-      const canJoin = !viewingDate && !!state.is_open;
-      el("joinBtn").disabled = !canJoin;
-
-      // Mensaje de ventana sólo en modo actual
-      if (!viewingDate) {
-        if (state.is_open) {
-          el("msg").innerHTML = "";
+        const t = tokens[e.id];
+        if (t?.delete_token && !viewingDate) {
+          const b = document.createElement("button");
+          b.textContent = "Borrarme";
+          b.onclick = async () => {
+            try {
+              await api("/api/leave", "POST", { entry_id: e.id, delete_token: t.delete_token });
+              const tok = loadTokens();
+              delete tok[e.id];
+              saveTokens(tok);
+              msg("Borrado.");
+              await refresh();
+            } catch (err) {
+              msg(err.message, true);
+            }
+          };
+          right.appendChild(b);
         } else {
-          const opens = new Date(state.opens_at); // si viene ISO completo ok
-          const fecha = opens.toLocaleDateString("es-ES", {
-            weekday: "long", day: "2-digit", month: "2-digit", year: "numeric"
-          }).replace(",", "");
-          msg(`Las reservas abren a las <b>7:00</b> el <b>${fecha}</b>`, true);
+          right.innerHTML = `<span class="pill">${viewingDate ? "Histórico" : "Sin control"}</span>`;
         }
-      } else {
-        el("msg").innerHTML = "";
+
+        li.appendChild(left);
+        li.appendChild(right);
+        listEl.appendChild(li);
       }
-
-      // Pill fecha
-      el("datePill").textContent = viewingDate
-        ? `Sesión: ${fmtDateES(state.session_date)} (histórico)`
-        : `Sesión: ${fmtDateES(state.session_date)}`;
-
-      // Contadores + listas
-      el("activeCount").textContent = state.active.length;
-      el("waitCount").textContent = state.waitlist.length;
-
-      const tokens = loadTokens();
-      renderList(el("activeList"), state.active, tokens);
-      renderList(el("waitList"), state.waitlist, tokens);
-      renderLog(state.changelog);
-    } catch (err) {
-      msg(err.message || "Error al cargar estado", true);
-      throw err;
-    } finally {
-      refreshing = false;
     }
-  }
 
-  // ======= Eventos =======
-  el("refreshBtn").onclick = async () => {
-    try { await refresh(viewingDate); msg("Actualizado."); }
-    catch (err) { msg(err.message, true); }
-  };
+    function renderLog(logs) {
+      el("logList").innerHTML = "";
+      for (const c of logs) {
+        const li = document.createElement("li");
+        const when = new Date(c.ts).toLocaleString();
+        const detail = c.details ? JSON.stringify(c.details) : "";
+        li.innerHTML = `<div>
+          <div><b>${escapeHtml(c.action)}</b> — ${escapeHtml(c.name || "")}</div>
+          <small>${when} ${escapeHtml(detail)}</small>
+        </div>`;
+        el("logList").appendChild(li);
+      }
+    }
 
-  el("joinBtn").onclick = async () => {
-    const name = el("name").value.trim();
-    if (!name) return msg("Escribe un nombre.", true);
+    // ======= Histórico / gráfico (requiere endpoints en el Worker) =======
+    async function getSessions(weeks = 52) {
+      return await api(\`/api/sessions?weeks=\${weeks}\`, "GET");
+    }
+    async function getStateFor(dateStr) {
+      return await api(\`/api/state?date=\${encodeURIComponent(dateStr)}\`, "GET");
+    }
+    async function getStats(weeks = 26) {
+      return await api(\`/api/stats?weeks=\${weeks}\`, "GET");
+    }
 
+    async function initSessionPicker() {
+      const sel = el("sessionSelect");
+      if (!sel) return;
+      sel.innerHTML = `<option value="">Cargando…</option>`;
+      try {
+        const dates = await getSessions(52);
+        if (!Array.isArray(dates) || dates.length === 0) {
+          sel.innerHTML = `<option value="">(Sin datos)</option>`;
+          return;
+        }
+        sel.innerHTML = dates.map(d => `<option value="${d}">${fmtDateLabelES(d)}</option>`).join("");
+      } catch (e) {
+        sel.innerHTML = `<option value="">Error</option>`;
+      }
+    }
+
+    let chart = null;
+    async function loadAndRenderChart() {
+      const canvas = el("statsChart");
+      if (!canvas || typeof Chart === "undefined") return;
+
+      const weeks = Number(el("statsWeeks")?.value || "26");
+      const series = await getStats(weeks);
+
+      const labels = (series || []).map(r => fmtDateES(r.session_date));
+      const active = (series || []).map(r => r.active ?? 0);
+      const wait = (series || []).map(r => r.waitlist ?? 0);
+      const total = (series || []).map(r => r.total ?? ((r.active ?? 0) + (r.waitlist ?? 0)));
+
+      const ctx = canvas.getContext("2d");
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            { label: "Active", data: active, tension: 0.25 },
+            { label: "Waitlist", data: wait, tension: 0.25 },
+            { label: "Total", data: total, tension: 0.25 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: { legend: { labels: { color: "#eaeaea" } } },
+          scales: {
+            x: { ticks: { color: "#cfcfcf" }, grid: { color: "rgba(255,255,255,.06)" } },
+            y: { ticks: { color: "#cfcfcf" }, grid: { color: "rgba(255,255,255,.06)" }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // ======= refresh con “modo histórico” =======
+    let viewingDate = null;  // null = actual
+    let refreshing = false;
+
+    async function refresh(dateStr = null) {
+      if (refreshing) return;
+      refreshing = true;
+
+      try {
+        const state = dateStr ? await getStateFor(dateStr) : await api("/api/state", "GET");
+        viewingDate = dateStr ? state.session_date : null;
+
+        const canJoin = !viewingDate && !!state.is_open;
+        el("joinBtn").disabled = !canJoin;
+
+        if (!viewingDate) {
+          if (state.is_open) {
+            el("msg").innerHTML = "";
+          } else {
+            const opens = new Date(state.opens_at);
+            const fecha = opens.toLocaleDateString("es-ES", {
+              weekday: "long", day: "2-digit", month: "2-digit", year: "numeric"
+            }).replace(",", "");
+            msg(\`Las reservas abren a las <b>7:00</b> el <b>\${fecha}</b>\`, true);
+          }
+        } else {
+          el("msg").innerHTML = "";
+        }
+
+        el("datePill").textContent = viewingDate
+          ? \`Sesión: \${fmtDateES(state.session_date)} (histórico)\`
+          : \`Sesión: \${fmtDateES(state.session_date)}\`;
+
+        el("activeCount").textContent = state.active.length;
+        el("waitCount").textContent = state.waitlist.length;
+
+        const tokens = loadTokens();
+        renderList(el("activeList"), state.active, tokens);
+        renderList(el("waitList"), state.waitlist, tokens);
+        renderLog(state.changelog);
+      } catch (err) {
+        msg(err.message || "Error al cargar estado", true);
+        throw err;
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    // ======= Eventos =======
+    el("refreshBtn").onclick = async () => {
+      try { await refresh(viewingDate); msg("Actualizado."); }
+      catch (err) { msg(err.message, true); }
+    };
+
+    el("joinBtn").onclick = async () => {
+      const name = el("name").value.trim();
+      if (!name) return msg("Escribe un nombre.", true);
+
+      try {
+        const r = await api("/api/join", "POST", { name });
+        const tokens = loadTokens();
+        tokens[r.entry_id] = { delete_token: r.delete_token, name: name, session_date: r.session_date };
+        saveTokens(tokens);
+
+        msg(\`Apuntado como <b>\${escapeHtml(name)}</b>. Estado: <b>\${escapeHtml(r.status)}</b>.\`);
+        el("name").value = "";
+        await refresh();
+      } catch (err) {
+        msg(err.message, true);
+      }
+    };
+
+    el("viewSessionBtn")?.addEventListener("click", async () => {
+      const d = el("sessionSelect").value;
+      if (!d) return;
+      try { await refresh(d); }
+      catch (e) { msg(e.message || "Error al cargar histórico", true); }
+    });
+
+    el("backToCurrentBtn")?.addEventListener("click", async () => {
+      try { await refresh(null); }
+      catch (e) { msg(e.message || "Error al volver", true); }
+    });
+
+    el("reloadStatsBtn")?.addEventListener("click", async () => {
+      try { await loadAndRenderChart(); }
+      catch (e) { msg(e.message || "Error cargando gráfico", true); }
+    });
+
+    // ======= Theme picker (W/U/B/R/G) =======
+    const THEME_KEY = "commander_theme_v1";
+
+    function setTheme(t){
+      document.body.setAttribute("data-theme", t);
+      document.querySelectorAll("[data-theme-pick]").forEach(btn => {
+        btn.setAttribute("aria-pressed", btn.getAttribute("data-theme-pick") === t ? "true" : "false");
+      });
+      try { localStorage.setItem(THEME_KEY, t); } catch {}
+    }
+
+    document.querySelectorAll("[data-theme-pick]").forEach(btn => {
+      btn.addEventListener("click", () => setTheme(btn.getAttribute("data-theme-pick")));
+    });
+
+    const savedTheme = (() => {
+      try { return localStorage.getItem(THEME_KEY) || "u"; } catch { return "u"; }
+    })();
+    setTheme(savedTheme);
+
+    // ======= Init =======
     try {
-      const r = await api("/api/join", "POST", { name });
-      const tokens = loadTokens();
-      tokens[r.entry_id] = { delete_token: r.delete_token, name: name, session_date: r.session_date };
-      saveTokens(tokens);
-
-      msg(`Apuntado como <b>${escapeHtml(name)}</b>. Estado: <b>${escapeHtml(r.status)}</b>.`);
-      el("name").value = "";
+      await initSessionPicker();
       await refresh();
+      await loadAndRenderChart();
     } catch (err) {
       msg(err.message, true);
     }
-  };
 
-  // Histórico botones (si existen en el DOM)
-  el("viewSessionBtn")?.addEventListener("click", async () => {
-    const d = el("sessionSelect").value;
-    if (!d) return;
-    await refresh(d);
-  });
-
-  el("backToCurrentBtn")?.addEventListener("click", async () => {
-    await refresh(null);
-  });
-
-  el("reloadStatsBtn")?.addEventListener("click", async () => {
-    try { await loadAndRenderChart(); }
-    catch (e) { msg(e.message || "Error cargando gráfico", true); }
-  });
-
-  // ======= Theme picker (W/U/B/R/G) =======
-  const THEME_KEY = "commander_theme_v1";
-
-  function setTheme(t){
-    document.body.setAttribute("data-theme", t);
-    document.querySelectorAll("[data-theme-pick]").forEach(btn => {
-      btn.setAttribute("aria-pressed", btn.getAttribute("data-theme-pick") === t ? "true" : "false");
-    });
-    try { localStorage.setItem(THEME_KEY, t); } catch {}
-  }
-
-  document.querySelectorAll("[data-theme-pick]").forEach(btn => {
-    btn.addEventListener("click", () => setTheme(btn.getAttribute("data-theme-pick")));
-  });
-
-  const savedTheme = (() => {
-    try { return localStorage.getItem(THEME_KEY) || "u"; } catch { return "u"; }
-  })();
-  setTheme(savedTheme);
-
-  // ======= Init =======
-  try {
-    await initSessionPicker();
-    await refresh();
-    await loadAndRenderChart();
-  } catch (err) {
-    msg(err.message, true);
-  }
-
-  // Auto-refresh cada 5s SOLO si no estás viendo histórico
-  setInterval(() => {
-    if (!viewingDate) refresh().catch(() => {});
-  }, 5000);
-</script>
-
+    // Auto-refresh cada 5s SOLO si no estás viendo histórico
+    setInterval(() => {
+      if (!viewingDate) refresh().catch(() => {});
+    }, 5000);
+  </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
